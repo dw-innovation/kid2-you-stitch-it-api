@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
  && rm -rf /var/lib/apt/lists/*
 
-EXPOSE 5000
+EXPOSE 8080
 
 WORKDIR /app
 
@@ -21,4 +21,4 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY app .
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8080"]
