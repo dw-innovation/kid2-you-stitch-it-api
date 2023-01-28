@@ -22,13 +22,19 @@ def stitchPanorama():
 
     imgs = []
 
-    for image_file in image_files:
-        img = cv2.imdecode(np.fromstring(image_file.read(), np.uint8), 1)
-        imgs.append(img)
+    try:
+        for image_file in image_files:
+            img = cv2.imdecode(np.fromstring(image_file.read(), np.uint8), 1)
+            imgs.append(img)
+    except Exception as e:
+        return jsonify(error="An error occurred: {}".format(e)), 500
 
     stitchy = cv2.Stitcher.create()
 
-    (dummy, output) = stitchy.stitch(imgs)
+    try:
+        (dummy, output) = stitchy.stitch(imgs)
+    except Exception as e:
+        return jsonify(error="An error occurred: {}".format(e)), 500
 
     if dummy != cv2.STITCHER_OK:
         return jsonify({"error": "Stitching not successful"}), 500
