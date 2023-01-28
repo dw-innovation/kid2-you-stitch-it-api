@@ -1,36 +1,41 @@
-from flask import Flask, send_file, request
+from flask import Flask, send_file, request, jsonify
 import cv2
 import numpy as np
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+     r"/*": {"origins": ["http://localhost:3000", "http://localhost:3001", "https://kid2-video-panorama-stitcher.vercel.app/"]}})
+
 
 @app.route("/stitchPanorama", methods=["POST"])
+@cross_origin(origins=["http://localhost:3000", "http://localhost:3001", "https://kid2-video-panorama-stitcher.vercel.app/"])
 def stitchPanorama():
     image_files = request.files.getlist("images")
+    if not image_files:
+        return jsonify({"error": "No images provided"}), 400
+    if len(image_files) < 2:
+        return jsonify({"error": "At least 2 images are required to stitch a panorama"}), 400
+
     imgs = []
-    logging.debug("image_files", image_files)
 
     for image_file in image_files:
-        # img = cv2.imdecode(np.fromstring(image_file.read(), np.uint8), cv2.IMREAD_UNCHANGED)
         img = cv2.imdecode(np.fromstring(image_file.read(), np.uint8), 1)
         imgs.append(img)
-        logging.debug("image_file appended")
 
-    
-    stitchy=cv2.Stitcher.create()
+    stitchy = cv2.Stitcher.create()
 
-    (dummy,output)=stitchy.stitch(imgs)
-    
+    (dummy, output) = stitchy.stitch(imgs)
+
     if dummy != cv2.STITCHER_OK:
-        return "not successful"
-    else: 
-        cv2.imwrite('stitched_panorama.png', output)
-        return send_file('stitched_panorama.png', mimetype='image/png')
+        return jsonify({"error": "Stitching not successful"}), 500
+    else:
+        cv2.imwrite("stitched_panorama.png", output)
+        return send_file("stitched_panorama.png", mimetype="image/png"), 200
+
 
 if __name__ == "__main__":
     from waitress import serve
