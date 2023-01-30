@@ -4,3 +4,5 @@ flask
 pillow
 waitress
 flask-cors
+youtube_dl
+uuid

@@ -1,5 +1,9 @@
 FROM ubuntu:20.04
 
+ENV ORIGINS="*"
+ENV DOWNLOAD_PATH='/app/files/'
+ENV FILES_BASE_URL='https://late-paper-1403.fly.dev/files/'
+
 ENV TZ=Africa/Cairo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -14,6 +18,8 @@ RUN apt-get update && apt-get install -y \
 EXPOSE 8080
 
 WORKDIR /app
+
+RUN mkdir files
 
 COPY requirements.txt ./requirements.txt
 
