@@ -17,19 +17,21 @@ CORS(app, resources={
 
 
 def preprocess_image(img):
-    """Preprocess images for better stitching results"""
-    # Convert to grayscale for feature detection
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    """Preprocess images for better stitching results while preserving color"""
+    # Apply CLAHE to each color channel separately for better color preservation
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
     
-    # Apply histogram equalization to improve contrast
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    gray = clahe.apply(gray)
+    # Apply CLAHE to the L channel only
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    l = clahe.apply(l)
     
-    # Convert back to BGR
-    return cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    # Merge channels back and convert to BGR
+    enhanced = cv2.merge([l, a, b])
+    return cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
 
-def resize_image_for_processing(img, max_dimension=1000):
-    """Resize image while maintaining aspect ratio"""
+def resize_image_for_processing(img, max_dimension=2000):
+    """Resize image while maintaining aspect ratio for high-quality processing"""
     height, width = img.shape[:2]
     if max(height, width) > max_dimension:
         if height > width:
@@ -38,7 +40,7 @@ def resize_image_for_processing(img, max_dimension=1000):
         else:
             new_width = max_dimension
             new_height = int(height * (max_dimension / width))
-        return cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        return cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
     return img
 
 @app.route("/stitchPanorama", methods=["POST"])
@@ -83,16 +85,21 @@ def stitchPanorama():
         try:
             stitcher = cv2.Stitcher.create(mode)
             
-            # Configure stitcher for better results
-            stitcher.setRegistrationResol(0.6)
-            stitcher.setSeamEstimationResol(0.1)
+            # Configure stitcher for high-quality results
+            stitcher.setRegistrationResol(0.8)
+            stitcher.setSeamEstimationResol(0.2)
             stitcher.setCompositingResol(1.0)
-            stitcher.setPanoConfidenceThresh(1.0)
+            stitcher.setPanoConfidenceThresh(0.8)
             
-            # First attempt with preprocessed images
+            # First attempt with preprocessed images for better feature detection
             status, output = stitcher.stitch(imgs)
             
             if status == cv2.STITCHER_OK:
+                # Re-stitch with original colors using the same stitcher parameters
+                resized_originals = [resize_image_for_processing(img) for img in original_imgs]
+                original_status, original_output = stitcher.stitch(resized_originals)
+                if original_status == cv2.STITCHER_OK:
+                    output = original_output
                 break
                 
             # If preprocessed fails, try with original resized images
@@ -128,9 +135,9 @@ def stitchPanorama():
             x, y, w, h = cv2.boundingRect(largest_contour)
             output = output[y:y+h, x:x+w]
         
-        # Generate unique filename
+        # Generate unique filename and save with high quality
         output_filename = f"stitched_panorama_{uuid.uuid4().hex[:8]}.png"
-        cv2.imwrite(output_filename, output)
+        cv2.imwrite(output_filename, output, [cv2.IMWRITE_PNG_COMPRESSION, 0])
         
         return send_file(output_filename, mimetype="image/png"), 200
         
