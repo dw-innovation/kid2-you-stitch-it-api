@@ -121,20 +121,25 @@ def stitchPanorama():
     
     # Post-process the result
     try:
-        # Crop black borders
+        # Create alpha channel from the image content
         gray = cv2.cvtColor(output, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        _, alpha = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
         
+        # Convert BGR to BGRA (add alpha channel)
+        bgra = cv2.cvtColor(output, cv2.COLOR_BGR2BGRA)
+        bgra[:, :, 3] = alpha  # Set alpha channel
+        
+        # Crop to remove transparent borders
+        contours, _ = cv2.findContours(alpha, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if contours:
             # Find the largest contour (the panorama)
             largest_contour = max(contours, key=cv2.contourArea)
             x, y, w, h = cv2.boundingRect(largest_contour)
-            output = output[y:y+h, x:x+w]
+            bgra = bgra[y:y+h, x:x+w]
         
-        # Generate unique filename and save with high quality
+        # Generate unique filename and save with transparency
         output_filename = f"stitched_panorama_{uuid.uuid4().hex[:8]}.png"
-        cv2.imwrite(output_filename, output, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+        cv2.imwrite(output_filename, bgra, [cv2.IMWRITE_PNG_COMPRESSION, 0])
         
         return send_file(output_filename, mimetype="image/png"), 200
         
