@@ -1,3 +1,5 @@
+<img width="1280" height="200" alt="492729813-74b7f12b-450c-41bb-8c47-bbf31402eff8" src="https://github.com/user-attachments/assets/1369c5d8-13b4-4a81-bac4-0f5112183d65" />
+
 # KID2 – You Stitch It API
 
 A Flask-based REST API for stitching multiple images into panoramic views using OpenCV. This service provides high-quality image stitching with intelligent preprocessing and post-processing capabilities.
